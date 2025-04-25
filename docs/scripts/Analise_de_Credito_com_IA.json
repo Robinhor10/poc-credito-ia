@@ -1,0 +1,387 @@
+{
+  "name": "Análise de Crédito com IA",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "solicitar-credito",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        80,
+        -20
+      ],
+      "id": "fdcd997c-a513-406b-9100-bb160ae163bc",
+      "webhookId": "8c5bf793-05a7-4f81-88ef-7851e266e815",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "functionCode": "// Obter dados do cliente e empréstimos\nconst clienteData = $node[\"Consultar Cliente\"].json;\nconst emprestimosData = $node[\"Consultar Empréstimos\"].json;\nconst inputData = $node[\"Webhook\"].json;\n\n// Log para depuração\nconsole.log(\"Dados do cliente:\", JSON.stringify(clienteData));\nconsole.log(\"Dados de empréstimos:\", JSON.stringify(emprestimosData));\nconsole.log(\"Dados da solicitação:\", JSON.stringify(inputData));\n\n// Verificar formato dos dados e ajustar\nlet cliente;\nif (Array.isArray(clienteData)) {\n  cliente = clienteData.length > 0 ? clienteData[0] : null;\n} else {\n  cliente = clienteData; // Se já for um objeto único\n}\n\nlet emprestimos;\nif (Array.isArray(emprestimosData)) {\n  emprestimos = emprestimosData;\n} else if (emprestimosData) {\n  emprestimos = [emprestimosData]; // Converter objeto único em array\n} else {\n  emprestimos = [];\n}\n\n// Verificar se o cliente existe\nif (!cliente) {\n  cliente = {\n    nome: \"Cliente não encontrado\",\n    renda_mensal: 0,\n    score_credito: 0,\n    limite_pre_aprovado: 0,\n    historico_pagamento: \"Não disponível\",\n    tempo_relacionamento_bancario: 0,\n    id: null\n  };\n}\n\n// Extrair dados da solicitação do webhook\n// Verificar se os dados estão no objeto body ou diretamente no json\nlet valorSolicitado = 0, parcelaSolicitada = 0, finalidade = \"Não Informado\", cpf = \"Não Informado\";\n\n// Verificar formato dos dados e ajustar\nlet dadosSolicitacao;\nif (Array.isArray(inputData)) {\n  dadosSolicitacao = inputData.length > 0 ? inputData[0] : null;\n} else {\n  dadosSolicitacao = inputData; // Se já for um objeto único\n}\n\n// Verificar se dadosSolicitacao existe e tem a propriedade body\nif (dadosSolicitacao && dadosSolicitacao.body) {\n  valorSolicitado = parseFloat(dadosSolicitacao.body.valorSolicitado || 0);\n  finalidade = dadosSolicitacao.body.finalidade || \"Não Informado\";\n  parcelaSolicitada = parseInt(dadosSolicitacao.body.parcelaSolicitada || 0);\n  cpf = dadosSolicitacao.body.cpf || \"Não Informado\";\n} else if (dadosSolicitacao) {\n  // Se não tiver body, tenta extrair diretamente do objeto\n  valorSolicitado = parseFloat(dadosSolicitacao.valorSolicitado || 0);\n  finalidade = dadosSolicitacao.finalidade || \"Não Informado\";\n  parcelaSolicitada = parseInt(dadosSolicitacao.parcelaSolicitada || 0);\n  cpf = dadosSolicitacao.cpf || \"Não Informado\";\n}\n\nconsole.log(\"Valor solicitado extraído:\", valorSolicitado);\nconsole.log(\"Parcelas extraídas:\", parcelaSolicitada);\nconsole.log(\"Finalidade extraída:\", finalidade);\nconsole.log(\"CPF extraído:\", cpf);\n\n// Calcular comprometimento atual\nlet totalParcelasMensais = 0;\nlet emprestimosTexto = \"\";\n\nif (emprestimos.length > 0) {\n  for (const emp of emprestimos) {\n    const valorParcela = parseFloat(emp.valor_parcela || 0);\n    totalParcelasMensais += valorParcela;\n    \n    // Alguns campos podem estar faltando no empréstimo\n    const parcelas = emp.parcelas || 0;\n    const taxaJuros = emp.taxa_juros ? parseFloat(emp.taxa_juros) : 0;\n    const status = emp.status || 'desconhecido';\n    \n    emprestimosTexto += `- Empréstimo, ${parcelas} parcelas de R$ ${valorParcela.toFixed(2)}, taxa de ${taxaJuros.toFixed(2)}%, status: ${status}\\n`;\n  }\n} else {\n  emprestimosTexto = \"Nenhum empréstimo ativo.\";\n}\n\n// Calcular comprometimento\nconst rendaMensal = parseFloat(cliente.renda_mensal || 1);\nconst comprometimentoAtual = (totalParcelasMensais / rendaMensal) * 100;\n\n// Estimar valor da parcela com diferentes opções de prazo\nconst taxaJurosEstimada = 1.5; // 1.5% ao mês\nconst valorParcelaAtual = valorSolicitado / parcelaSolicitada * (1 + (taxaJurosEstimada / 100));\n\n// Calcular opções de parcelas\nconst opcoesParcelas = [12, 24, 36, 48, 60];\nconst opcoesParcelasTexto = opcoesParcelas.map(numParcelas => {\n  const valorParcelaOpcao = valorSolicitado / numParcelas * (1 + (taxaJurosEstimada / 100));\n  const comprometimentoOpcao = comprometimentoAtual + ((valorParcelaOpcao / rendaMensal) * 100);\n  return `${numParcelas} parcelas: R$ ${valorParcelaOpcao.toFixed(2)} (${comprometimentoOpcao.toFixed(2)}% da renda)`;\n}).join(\"\\n\");\n\nconst novoComprometimento = comprometimentoAtual + ((valorParcelaAtual / rendaMensal) * 100);\n\n// Verificar se o cliente foi encontrado\nconst clienteEncontrado = cliente.id !== null;\nconsole.log(\"Cliente encontrado:\", clienteEncontrado);\n\n// Preparar prompt para a IA\nlet prompt;\n\nif (!clienteEncontrado) {\n  prompt = `\nVocê é um analista de crédito experiente em uma instituição financeira. \nInfelizmente, não foi possível encontrar o cliente com o CPF fornecido em nossa base de dados.\n\nSOLICITAÇÃO ATUAL:\n- CPF: ${cpf}\n- Valor solicitado: R$ ${valorSolicitado.toFixed(2)}\n- Número de parcelas solicitadas: ${parcelaSolicitada}\n- Finalidade: ${finalidade}\n\nPor favor, informe ao cliente que não foi possível processar a solicitação de crédito porque seus dados não foram encontrados em nosso sistema. Recomende que o cliente entre em contato com nossa central de atendimento para atualizar seu cadastro antes de fazer uma nova solicitação.\n\nDECISÃO: NEGADO\n\nMOTIVO: Cliente não encontrado na base de dados.\n\nRECOMENDAÇÕES: O cliente deve atualizar seu cadastro antes de solicitar crédito.\n`;\n} else {\n  prompt = `\nVocê é um analista de crédito experiente em uma instituição financeira. Sua tarefa é avaliar se um cliente deve ter seu pedido de empréstimo aprovado ou negado com base nos dados fornecidos, e sugerir o número ideal de parcelas e valor da parcela.\n\nDADOS DO CLIENTE:\n- Nome: ${cliente.nome || 'Não informado'}\n- Renda mensal: R$ ${parseFloat(cliente.renda_mensal || 0).toFixed(2)}\n- Score de crédito: ${cliente.score_credito || 'Não informado'} (escala de 0 a 1000)\n- Histórico de pagamento: ${cliente.historico_pagamento || \"Não disponível\"}\n- Tempo de relacionamento bancário: ${cliente.tempo_relacionamento_bancario || \"Não disponível\"} meses\n- Limite pré-aprovado: R$ ${parseFloat(cliente.limite_pre_aprovado || 0).toFixed(2)}\n\nEMPRÉSTIMOS ATUAIS:\n${emprestimosTexto}\n\nSOLICITAÇÃO ATUAL:\n- Valor solicitado: R$ ${valorSolicitado.toFixed(2)}\n- Número de parcelas solicitadas: ${parcelaSolicitada}\n- Finalidade: ${finalidade}\n\nCOMPROMETIMENTO DE RENDA:\n- Comprometimento atual: ${comprometimentoAtual.toFixed(2)}%\n- Comprometimento estimado com o novo empréstimo: ${novoComprometimento.toFixed(2)}%\n\nOPÇÕES DE PARCELAMENTO (com taxa de ${taxaJurosEstimada}% ao mês):\n${opcoesParcelasTexto}\n\nCom base nessas informações, realize uma análise detalhada e determine:\n1. Se o crédito deve ser APROVADO ou NEGADO\n2. Qual o número ideal de parcelas para este cliente\n3. Qual o valor da parcela recomendado\n\nSua resposta deve seguir o seguinte formato:\n\nDECISÃO: [APROVADO/NEGADO]\n\nMOTIVO: [Explicação clara e detalhada da decisão]\n\nPARCELAS RECOMENDADAS: [Número de parcelas ideal]\n\nVALOR DA PARCELA: [Valor da parcela recomendado]\n\nANÁLISE DE RISCO:\n1. [Ponto de análise 1]\n2. [Ponto de análise 2]\n3. [Ponto de análise 3]\n\nRECOMENDAÇÕES: [Se aplicável, sugestões para o cliente]\n`;\n}\n\n// Retornar todos os dados processados\nreturn {\n  cliente,\n  emprestimos,\n  comprometimentoAtual,\n  valorSolicitado,\n  parcelaSolicitada,\n  valorParcelaAtual,\n  novoComprometimento,\n  finalidade,\n  prompt,\n  clienteEncontrado,\n  cpf,\n  opcoesParcelas\n};"
+      },
+      "name": "Preparar Dados para IA",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        800,
+        -20
+      ],
+      "id": "8bb46825-0991-4159-8722-33fd7482f4e0",
+      "alwaysOutputData": true,
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "functionCode": "// Obter resposta da IA\nconst respostaData = $node[\"Análise de Crédito com IA\"].json;\nconst dadosAnterior = $node[\"Preparar Dados para IA\"].json;\n\n// Extrair o conteúdo da resposta da IA\nlet respostaTexto = \"\";\nif (respostaData && respostaData.choices && respostaData.choices.length > 0) {\n  // Formato da API OpenAI\n  respostaTexto = respostaData.choices[0].message.content;\n} else {\n  // Tentar outros formatos ou usar o objeto inteiro como string\n  respostaTexto = JSON.stringify(respostaData);\n}\n\nconsole.log(\"Resposta da IA:\", respostaTexto);\n\n// Extrair decisão (APROVADO, NEGADO ou INCONCLUSIVO)\nlet decisao = \"negado\"; // Padrão\nlet motivo = \"Não foi possível determinar\";\nlet parcelasRecomendadas = dadosAnterior.parcelas; // Valor padrão\nlet valorParcelaRecomendado = dadosAnterior.valorParcelaAtual; // Valor padrão\n\n// Se o cliente não foi encontrado, já sabemos a decisão\nif (!dadosAnterior.clienteEncontrado) {\n  decisao = \"negado\";\n  motivo = \"Cliente não encontrado na base de dados.\";\n} else {\n  // Procurar por \"DECISÃO: APROVADO\", \"DECISÃO: NEGADO\" ou \"DECISÃO: INCONCLUSIVO\"\n  if (respostaTexto.includes(\"DECISÃO: APROVADO\")) {\n    decisao = \"aprovado\";\n  } else if (respostaTexto.includes(\"DECISÃO: INCONCLUSIVO\")) {\n    decisao = \"inconclusivo\";\n  }\n\n  // Extrair motivo\n  const motivoMatch = respostaTexto.match(/MOTIVO:(.*?)(?=PARCELAS RECOMENDADAS:|ANÁLISE DE RISCO:|RECOMENDAÇÕES:|$)/s);\n  if (motivoMatch && motivoMatch[1]) {\n    motivo = motivoMatch[1].trim();\n  }\n  \n  // Extrair parcelas recomendadas\n  const parcelasMatch = respostaTexto.match(/PARCELAS RECOMENDADAS:(.*?)(?=VALOR DA PARCELA:|ANÁLISE DE RISCO:|RECOMENDAÇÕES:|$)/s);\n  if (parcelasMatch && parcelasMatch[1]) {\n    const parcelasTexto = parcelasMatch[1].trim();\n    // Tentar extrair o número de parcelas\n    const numeroMatch = parcelasTexto.match(/\\d+/);\n    if (numeroMatch) {\n      parcelasRecomendadas = parseInt(numeroMatch[0]);\n    }\n  }\n  \n  // Extrair valor da parcela\n  const valorParcelaMatch = respostaTexto.match(/VALOR DA PARCELA:(.*?)(?=ANÁLISE DE RISCO:|RECOMENDAÇÕES:|$)/s);\n  if (valorParcelaMatch && valorParcelaMatch[1]) {\n    const valorParcelaTexto = valorParcelaMatch[1].trim();\n    // Tentar extrair o valor numérico\n    const valorMatch = valorParcelaTexto.match(/R\\$\\s*(\\d+[.,]\\d+)/);\n    if (valorMatch) {\n      valorParcelaRecomendado = parseFloat(valorMatch[1].replace(',', '.'));\n    }\n  }\n}\n\nreturn {\n  ...dadosAnterior,\n  decisao,\n  motivo,\n  parcelasRecomendadas,\n  valorParcelaRecomendado,\n  analise_completa: respostaTexto\n};"
+      },
+      "name": "Interpretar Resposta da IA",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1460,
+        -20
+      ],
+      "id": "fcb44242-d72a-4c92-afca-e5008072fc0c",
+      "alwaysOutputData": true,
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "table": "solicitacoes_credito",
+        "columns": "cliente_id,valor_solicitado,finalidade,resultado,motivo,analise_ia,parcelas_solicitadas,parcelas_recomendadas,valor_parcela_recomendado",
+        "additionalFields": {}
+      },
+      "name": "Registrar Solicitação",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        2260,
+        -20
+      ],
+      "id": "2a220b79-be93-4821-8230-c239d4a2e47a",
+      "alwaysOutputData": true,
+      "notesInFlow": true,
+      "credentials": {
+        "postgres": {
+          "id": "FRpftljS15zTSQ06",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=JSON.stringify({\n  sucesso: true,\n  resultado: $node[\"Interpretar Resposta da IA\"].json.decisao,\n  motivo: $node[\"Interpretar Resposta da IA\"].json.motivo,\n  detalhes: {\n    valor_solicitado: $node[\"Interpretar Resposta da IA\"].json.valorSolicitado,\n    parcelas_solicitadas: $node[\"Interpretar Resposta da IA\"].json.parcelaSolicitada,\n    parcelas_recomendadas: $node[\"Interpretar Resposta da IA\"].json.parcelasRecomendadas,\n    valor_parcela_recomendado: $node[\"Interpretar Resposta da IA\"].json.valorParcelaRecomendado,\n    comprometimento_atual: $node[\"Interpretar Resposta da IA\"].json.comprometimentoAtual,\n    novo_comprometimento: $node[\"Interpretar Resposta da IA\"].json.novoComprometimento\n  },\n  analise_completa: $node[\"Interpretar Resposta da IA\"].json.analise_completa\n})",
+        "options": {}
+      },
+      "name": "Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2540,
+        -20
+      ],
+      "id": "53e4c04c-25e0-46fe-8787-718c8dabcdae",
+      "alwaysOutputData": true,
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "clientes",
+          "mode": "list",
+          "cachedResultName": "clientes"
+        },
+        "where": {
+          "values": [
+            {
+              "column": "cpf",
+              "value": "={{ $json.body.cpf }}"
+            }
+          ]
+        },
+        "options": {
+          "outputColumns": [
+            "id",
+            "nome",
+            "renda_mensal",
+            "score_credito",
+            "limite_pre_aprovado",
+            "historico_pagamento"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        300,
+        -20
+      ],
+      "id": "f4602c81-85fb-49b4-9d86-e608727ed967",
+      "name": "Consultar Cliente",
+      "alwaysOutputData": true,
+      "notesInFlow": true,
+      "credentials": {
+        "postgres": {
+          "id": "FRpftljS15zTSQ06",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "emprestimos",
+          "mode": "list",
+          "cachedResultName": "emprestimos"
+        },
+        "where": {
+          "values": [
+            {
+              "column": "cliente_id",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "column": "status",
+              "value": "ativo"
+            }
+          ]
+        },
+        "options": {
+          "outputColumns": [
+            "parcelas",
+            "valor_parcela",
+            "taxa_juros",
+            "status",
+            "cliente_id"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        520,
+        -20
+      ],
+      "id": "a8439def-f308-4a4f-be88-a6cccc572ae0",
+      "name": "Consultar Empréstimos",
+      "alwaysOutputData": true,
+      "notesInFlow": true,
+      "credentials": {
+        "postgres": {
+          "id": "FRpftljS15zTSQ06",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $node[\"Preparar Dados para IA\"].json.prompt }}"
+            }
+          ]
+        },
+        "simplify": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        1020,
+        -20
+      ],
+      "id": "1571a6b6-f232-4a66-b4f9-7fc2a856d386",
+      "name": "Análise de Crédito com IA",
+      "alwaysOutputData": true,
+      "notesInFlow": true,
+      "credentials": {
+        "openAiApi": {
+          "id": "yKrY6P52G0GFUlNh",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Prepara e Processa a regra usando IA\n",
+        "height": 340,
+        "width": 600,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        740,
+        -100
+      ],
+      "id": "713c2b19-14ee-4e0e-abde-1529e6c260e9",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Recebe a Requisição e Efetua a leitura dos dados do cliente no banco\n",
+        "height": 340,
+        "width": 660,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        20,
+        -100
+      ],
+      "id": "e44f96a1-a225-4cc4-941a-9864fccef55a",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Obter dados do nó anterior\nconst dados = $node[\"Interpretar Resposta da IA\"].json;\n\n// Criar objeto formatado para inserção no banco\nreturn {\n  json: {\n    cliente_id: dados.cliente && dados.cliente.id ? dados.cliente.id : null,\n    valor_solicitado: Number(dados.valorSolicitado || 0),\n    finalidade: dados.finalidade || \"Não especificada\",\n    resultado: dados.decisao || \"negado\",\n    motivo: dados.motivo || \"Não especificado\",\n    analise_ia: dados.analise_completa || \"\",\n    parcelas_solicitadas: Number(dados.parcelaSolicitada || 0),\n    parcelas_recomendadas: Number(dados.parcelasRecomendadas || 0),\n    valor_parcela_recomendado: Number(dados.valorParcelaRecomendado || 0)\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1800,
+        -20
+      ],
+      "id": "b54c2083-45a7-49ae-a7a1-991fae00bbad",
+      "name": "Formata Dados",
+      "notesInFlow": true,
+      "alwaysOutputData": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Consultar Cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Dados para IA": {
+      "main": [
+        [
+          {
+            "node": "Análise de Crédito com IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Interpretar Resposta da IA": {
+      "main": [
+        [
+          {
+            "node": "Formata Dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar Solicitação": {
+      "main": [
+        [
+          {
+            "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar Cliente": {
+      "main": [
+        [
+          {
+            "node": "Consultar Empréstimos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar Empréstimos": {
+      "main": [
+        [
+          {
+            "node": "Preparar Dados para IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Análise de Crédito com IA": {
+      "main": [
+        [
+          {
+            "node": "Interpretar Resposta da IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Responder": {
+      "main": [
+        []
+      ]
+    },
+    "Formata Dados": {
+      "main": [
+        [
+          {
+            "node": "Registrar Solicitação",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "0ec67ae7-f721-449b-a507-9eb2ae3e8d95",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "187d1cb06a247c662ee7dbe14e1aa471fc21ba9e9a03f8b5ab03f34249a61645"
+  },
+  "id": "Tq7MWfAYEvCrKPNZ",
+  "tags": []
+}

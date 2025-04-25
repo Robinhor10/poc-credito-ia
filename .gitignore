@@ -1,0 +1,24 @@
+# Ignore arquivos de ambiente e dados sensíveis
+.env
+
+# Ignorar diretórios e arquivos do Docker
+supabase_db_data/
+n8n_data/
+
+# Ignorar arquivos temporários do sistema
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Ignorar arquivos de backup do editor
+*~
+*.swp
+*.swo
+
+# Ignorar arquivos de cache do Python (caso utilize scripts)
+__pycache__/
+*.pyc
+
+# Ignorar arquivos de configuração específicos do VSCode
+.vscode/
