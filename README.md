@@ -223,5 +223,3 @@ Abaixo está uma explicação dos principais arquivos e diretórios deste projet
 - Sempre consulte esta seção ou o próprio arquivo para entender o propósito de cada item.
 
 ---
-
-Se precisar de ilustrações, exemplos adicionais ou quiser adaptar o texto para slides, só avisar!
