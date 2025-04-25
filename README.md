@@ -110,8 +110,7 @@ flowchart TD
 |-------------------------|---------------------------------------------------------------------|
 | clientes                | Dados pessoais e financeiros de cada cliente                        |
 | emprestimos             | Empréstimos já contratados pelo cliente                            |
-| solicitacoes_credito    | Histórico de todos os pedidos de crédito realizados                |
-| parametros_credito      | (Opcional) Regras gerais de aprovação, se desejar usar junto com IA |
+| solicitacoes_credito    | Histórico de todos os pedidos de crédito analisados e decididos                |
 
 ---
 
@@ -214,7 +213,7 @@ Abaixo está uma explicação dos principais arquivos e diretórios deste projet
 | `.env`                           | Variáveis de ambiente sensíveis (NÃO versionado, exemplo no README)      |
 | `docker-compose.yml`             | Orquestração dos containers Docker (banco, N8N, etc)                     |
 | `init-db.sql`                    | Script SQL para criar e popular o banco de dados com massa de teste      |
-| `docs/estrutura-db.md`           | Documentação detalhada do modelo de dados e exemplos de inserts          |
+| `docs/estrutura-db.md`           | Documentação detalhada do modelo de dados e exemplos de inserts, ao subir o projeto          |
 | `docs/guia-refatoracao.md`       | Guia técnico e didático sobre toda a refatoração e decisões do projeto   |
 | `n8n_data/`                      | Volume Docker para persistir dados e workflows do N8N                    |
 | `supabase_db_data/`              | Volume Docker para persistir dados do banco Postgres/Supabase            |
