@@ -1,5 +1,5 @@
 {
-  "name": "Análise de Crédito com IA",
+  "name": "Credito AI",
   "nodes": [
     {
       "parameters": {
@@ -12,10 +12,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
       "position": [
-        80,
-        -20
+        60,
+        80
       ],
-      "id": "fdcd997c-a513-406b-9100-bb160ae163bc",
+      "id": "8458139f-f2f0-469e-828a-95f8bb823bff",
       "webhookId": "8c5bf793-05a7-4f81-88ef-7851e266e815",
       "notesInFlow": true
     },
@@ -27,10 +27,10 @@
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        800,
-        -20
+        780,
+        80
       ],
-      "id": "8bb46825-0991-4159-8722-33fd7482f4e0",
+      "id": "afaec06b-3ba6-44a6-9418-d6a8bb2c6a2d",
       "alwaysOutputData": true,
       "notesInFlow": true
     },
@@ -42,10 +42,10 @@
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        1460,
-        -20
+        1440,
+        80
       ],
-      "id": "fcb44242-d72a-4c92-afca-e5008072fc0c",
+      "id": "7bfe8d12-8e93-46be-bdfa-2f4d9b625c43",
       "alwaysOutputData": true,
       "notesInFlow": true
     },
@@ -59,15 +59,15 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 1,
       "position": [
-        2260,
-        -20
+        2240,
+        80
       ],
-      "id": "2a220b79-be93-4821-8230-c239d4a2e47a",
+      "id": "95b560c0-926e-4736-9563-52a1302f45a3",
       "alwaysOutputData": true,
       "notesInFlow": true,
       "credentials": {
         "postgres": {
-          "id": "FRpftljS15zTSQ06",
+          "id": "oVhvjeCmYUkKLw2X",
           "name": "Postgres account"
         }
       }
@@ -82,10 +82,10 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        2540,
-        -20
+        2520,
+        80
       ],
-      "id": "53e4c04c-25e0-46fe-8787-718c8dabcdae",
+      "id": "29d25255-656e-47f8-9726-c4139a71287b",
       "alwaysOutputData": true,
       "notesInFlow": true
     },
@@ -103,6 +103,7 @@
           "mode": "list",
           "cachedResultName": "clientes"
         },
+        "returnAll": true,
         "where": {
           "values": [
             {
@@ -125,16 +126,16 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        300,
-        -20
+        280,
+        80
       ],
-      "id": "f4602c81-85fb-49b4-9d86-e608727ed967",
+      "id": "63d79faf-eebd-475d-876f-4d89bcc712bb",
       "name": "Consultar Cliente",
       "alwaysOutputData": true,
       "notesInFlow": true,
       "credentials": {
         "postgres": {
-          "id": "FRpftljS15zTSQ06",
+          "id": "oVhvjeCmYUkKLw2X",
           "name": "Postgres account"
         }
       }
@@ -153,6 +154,7 @@
           "mode": "list",
           "cachedResultName": "emprestimos"
         },
+        "returnAll": true,
         "where": {
           "values": [
             {
@@ -178,16 +180,16 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        520,
-        -20
+        500,
+        80
       ],
-      "id": "a8439def-f308-4a4f-be88-a6cccc572ae0",
+      "id": "3d0d4aec-e0ea-41eb-ba4b-263a9801475b",
       "name": "Consultar Empréstimos",
       "alwaysOutputData": true,
       "notesInFlow": true,
       "credentials": {
         "postgres": {
-          "id": "FRpftljS15zTSQ06",
+          "id": "oVhvjeCmYUkKLw2X",
           "name": "Postgres account"
         }
       }
@@ -213,16 +215,16 @@
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 1.8,
       "position": [
-        1020,
-        -20
+        1000,
+        80
       ],
-      "id": "1571a6b6-f232-4a66-b4f9-7fc2a856d386",
+      "id": "28e97d5b-6314-4c46-92ad-c27484d635bc",
       "name": "Análise de Crédito com IA",
       "alwaysOutputData": true,
       "notesInFlow": true,
       "credentials": {
         "openAiApi": {
-          "id": "yKrY6P52G0GFUlNh",
+          "id": "6EqLi7WnRcW96ANy",
           "name": "OpenAi account"
         }
       }
@@ -237,10 +239,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        740,
-        -100
+        720,
+        0
       ],
-      "id": "713c2b19-14ee-4e0e-abde-1529e6c260e9",
+      "id": "adec3152-ee6e-4add-b785-a58586ae58fb",
       "name": "Sticky Note"
     },
     {
@@ -253,10 +255,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        20,
-        -100
+        0,
+        0
       ],
-      "id": "e44f96a1-a225-4cc4-941a-9864fccef55a",
+      "id": "9df3d690-a727-441f-95c7-971c9576d801",
       "name": "Sticky Note1"
     },
     {
@@ -266,10 +268,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1800,
-        -20
+        1780,
+        80
       ],
-      "id": "b54c2083-45a7-49ae-a7a1-991fae00bbad",
+      "id": "a8d9df58-46a9-4786-a8a5-8389739173cb",
       "name": "Formata Dados",
       "notesInFlow": true,
       "alwaysOutputData": true
@@ -354,11 +356,6 @@
         ]
       ]
     },
-    "Responder": {
-      "main": [
-        []
-      ]
-    },
     "Formata Dados": {
       "main": [
         [
@@ -373,15 +370,13 @@
   },
   "active": true,
   "settings": {
-    "executionOrder": "v1",
-    "timezone": "America/Sao_Paulo",
-    "callerPolicy": "workflowsFromSameOwner"
+    "executionOrder": "v1"
   },
-  "versionId": "0ec67ae7-f721-449b-a507-9eb2ae3e8d95",
+  "versionId": "2d827934-255b-4003-b442-3f9a80709494",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "187d1cb06a247c662ee7dbe14e1aa471fc21ba9e9a03f8b5ab03f34249a61645"
+    "instanceId": "c1a01694aa25f3cff3ac0c53c48eb83cd3a9d5379824390f6f18ff76a9e69d74"
   },
-  "id": "Tq7MWfAYEvCrKPNZ",
+  "id": "CpNUFcTEYocMf9pw",
   "tags": []
 }
