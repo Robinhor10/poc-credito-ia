@@ -302,5 +302,3 @@ Abaixo está uma explicação dos principais arquivos e diretórios deste projet
 
 - Outros arquivos e diretórios podem ser adicionados conforme o projeto evolui.
 - Sempre consulte esta seção ou o próprio arquivo para entender o propósito de cada item.
-
-
