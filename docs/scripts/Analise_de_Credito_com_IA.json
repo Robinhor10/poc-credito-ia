@@ -5,7 +5,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "solicitar-credito",
-        "responseMode": "lastNode",
+        "responseMode": "responseNode",
         "options": {}
       },
       "name": "Webhook",
@@ -52,15 +52,15 @@
     {
       "parameters": {
         "table": "solicitacoes_credito",
-        "columns": "cliente_id,valor_solicitado,finalidade,resultado,motivo,analise_ia,parcelas_solicitadas,parcelas_recomendadas,valor_parcela_recomendado",
+        "columns": "=cliente_id,valor_solicitado,finalidade,resultado,motivo,analise_ia,parcelas_solicitadas,parcelas_recomendadas,valor_parcela_recomendado",
         "additionalFields": {}
       },
       "name": "Registrar Solicitação",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 1,
       "position": [
-        2240,
-        80
+        2360,
+        -220
       ],
       "id": "95b560c0-926e-4736-9563-52a1302f45a3",
       "alwaysOutputData": true,
@@ -74,15 +74,15 @@
     },
     {
       "parameters": {
-        "respondWith": "text",
-        "responseBody": "=JSON.stringify({\n  sucesso: true,\n  resultado: $node[\"Interpretar Resposta da IA\"].json.decisao,\n  motivo: $node[\"Interpretar Resposta da IA\"].json.motivo,\n  detalhes: {\n    valor_solicitado: $node[\"Interpretar Resposta da IA\"].json.valorSolicitado,\n    parcelas_solicitadas: $node[\"Interpretar Resposta da IA\"].json.parcelaSolicitada,\n    parcelas_recomendadas: $node[\"Interpretar Resposta da IA\"].json.parcelasRecomendadas,\n    valor_parcela_recomendado: $node[\"Interpretar Resposta da IA\"].json.valorParcelaRecomendado,\n    comprometimento_atual: $node[\"Interpretar Resposta da IA\"].json.comprometimentoAtual,\n    novo_comprometimento: $node[\"Interpretar Resposta da IA\"].json.novoComprometimento\n  },\n  analise_completa: $node[\"Interpretar Resposta da IA\"].json.analise_completa\n})",
+        "respondWith": "json",
+        "responseBody": "={{ $('Formata Dados').item.json }}",
         "options": {}
       },
       "name": "Responder",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        2520,
+        2760,
         80
       ],
       "id": "29d25255-656e-47f8-9726-c4139a71287b",
@@ -275,6 +275,89 @@
       "name": "Formata Dados",
       "notesInFlow": true,
       "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "topic": "decisao_negada",
+        "useKey": true,
+        "key": "={{ $('Formata Dados').item.json.cliente_id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.kafka",
+      "typeVersion": 1,
+      "position": [
+        2080,
+        680
+      ],
+      "id": "0961aa70-822d-43ce-9872-3da95a88ac83",
+      "name": "Kafka - Eventos Recusa",
+      "alwaysOutputData": false,
+      "notesInFlow": true,
+      "credentials": {
+        "kafka": {
+          "id": "ROtNTqrHyMum7q7o",
+          "name": "Kafka account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "topic": "decisao_aprovada",
+        "useKey": true,
+        "key": "={{ $('Formata Dados').item.json.cliente_id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.kafka",
+      "typeVersion": 1,
+      "position": [
+        2080,
+        420
+      ],
+      "id": "6434526c-f8b9-4188-878d-02e8352af797",
+      "name": "Kafka - Eventos de Aprovação",
+      "alwaysOutputData": true,
+      "notesInFlow": true,
+      "credentials": {
+        "kafka": {
+          "id": "ROtNTqrHyMum7q7o",
+          "name": "Kafka account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0e6c25bf-c60f-4649-9b80-fd4153998abf",
+              "leftValue": "={{ $json.resultado }}",
+              "rightValue": "aprovado",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1760,
+        460
+      ],
+      "id": "00855b3f-1919-49b7-8951-7f8773595fd1",
+      "name": "If",
+      "alwaysOutputData": false
     }
   ],
   "pinData": {},
@@ -363,6 +446,44 @@
             "node": "Registrar Solicitação",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kafka - Eventos Recusa": {
+      "main": [
+        []
+      ]
+    },
+    "Kafka - Eventos de Aprovação": {
+      "main": [
+        []
+      ]
+    },
+    "Responder": {
+      "main": [
+        []
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Kafka - Eventos de Aprovação",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Kafka - Eventos Recusa",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -372,7 +493,7 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "2d827934-255b-4003-b442-3f9a80709494",
+  "versionId": "dd00054d-ac27-4deb-8f68-c598afcd2b38",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "c1a01694aa25f3cff3ac0c53c48eb83cd3a9d5379824390f6f18ff76a9e69d74"
